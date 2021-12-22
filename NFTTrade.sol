@@ -271,7 +271,7 @@ pragma solidity ^0.6.0;
 contract NFTTrade  {
 
     address owner;
-    bool public saleIsActive = false;
+    bool public tradeIsActive = false;
     IERC20 public saletoken;
     IERC721 public nfttoken;
     mapping(uint => uint) nftPrices;
@@ -301,6 +301,8 @@ contract NFTTrade  {
         return nfttoken.balanceOf(user);
     }
     function listNFTforSale(uint index,uint price) public {
+        require(nftPrices[index]==0, "NFT already listed");
+        require(tradeIsActive, "Trading is not enabled");
         require(msg.sender==nfttoken.ownerOf(index), "Only NFT Owner can list it");
         // require((nfttoken.isApprovedForAll(seller,address(this))), "Not approved by NFT owner");
         setNFTprice(index,price);
@@ -308,6 +310,7 @@ contract NFTTrade  {
 
     function transactNFT(address seller,address buyer,uint index)public{
         // require(buyer==msg.sender, "Only buyer can make transaction");
+        require(tradeIsActive, "Trading is not enabled");
         require(buyer!=seller, "Buyer and Seller cannot be same");
         require(nftPrices[index]!=0, "NFT not for sale");
         require((saletoken.allowance(buyer,address(this))>=nftPrices[index]), "Not enough allowance");
@@ -315,6 +318,7 @@ contract NFTTrade  {
          nfttoken.safeTransferFrom(seller,buyer,index);
     }
     function setNFTprice(uint index,uint price)public{
+        require(tradeIsActive, "Trading is not enabled");
         require(nfttoken.ownerOf(index)==msg.sender, "Only NFT Owner can set price");
          nftPrices[index]=price;
     }
