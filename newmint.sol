@@ -1907,9 +1907,7 @@ contract monster is ERC721, Ownable {
 
     uint256 public startingIndex;
 
-    uint256 public constant monsterPrice = 1000000000; //the minimum amount of saletoken required to buy these things 
-
-    uint public constant maxmonsterPurchase = 20;
+    uint256 public constant monsterPrice = 1000000000; //the minimum amount of saletoken required to buy MonstaNFTs
 
     uint256 public MAX_monster;
 
@@ -1917,13 +1915,13 @@ contract monster is ERC721, Ownable {
 
     IERC20 public saletoken;
     
-   address payable walletToRecieveToken=0x15412D1f9C63e9123Fa62a3E385a130f5C959De5;
+   address walletToRecieveToken=0x000000000000000000000000000000000000dEaD;
 
     uint256 public REVEAL_TIMESTAMP;
 
     event minted(address indexed to, uint256 indexed tokenId, string message);
 
-    constructor(string memory name, string memory symbol, uint256 maxNftSupply, uint256 saleStart) payable ERC721(name, symbol) {
+    constructor(string memory name, string memory symbol, uint256 maxNftSupply, uint256 saleStart)  ERC721(name, symbol) {
         MAX_monster = maxNftSupply;
         REVEAL_TIMESTAMP = saleStart + (86400 * 5);
     }
@@ -1936,6 +1934,9 @@ contract monster is ERC721, Ownable {
 
     function setPurchaseToken(IERC20 token) public onlyOwner {
         saletoken = token;
+    }
+    function setWalletToRecieveToken(address deadwallet) public onlyOwner {
+        walletToRecieveToken = deadwallet;
     }
 
     /**
@@ -1952,7 +1953,6 @@ contract monster is ERC721, Ownable {
     function setRevealTimestamp(uint256 revealTimeStamp) public onlyOwner {
         REVEAL_TIMESTAMP = revealTimeStamp;
     } 
-
     /*     
     * Set provenance once it's calculated
     */
@@ -1970,28 +1970,23 @@ contract monster is ERC721, Ownable {
     function flipSaleState() public onlyOwner {
         saleIsActive = !saleIsActive;
     }
-
     /**
     * Mints monster
     */
-    function mintmonster(uint numberOfTokens, string calldata message)payable public {
+    function mintmonster( string calldata message) public {
         require(saleIsActive, "Sale must be active to mint monster");
-        require(numberOfTokens <= maxmonsterPurchase, "Can only mint 20 tokens at a time");
-        require(totalSupply().add(numberOfTokens) <= MAX_monster, "Purchase would exceed max supply of monster");
-        // require(monsterPrice.mul(numberOfTokens) <= msg.value, "Ether value sent is not correct");
-        // require(msg.value >=monsterPrice.mul(numberOfTokens), "you dont have enough tokens to mint");
-        // require(saletoken.allowance(msg.sender, address(this)) > monsterPrice.mul(numberOfTokens), "this contract is not approved to spend your token" );
-        saletoken.approve(address(this), monsterPrice.mul(numberOfTokens));
-        saletoken.transferFrom(msg.sender, 0x15412D1f9C63e9123Fa62a3E385a130f5C959De5, 1);
-        // walletToRecieveToken.transfer(msg.value);
-        for(uint i = 0; i < numberOfTokens; i++) {
-            uint mintIndex = totalSupply();
+        require((totalSupply()+1) <= MAX_monster, "Purchase would exceed max supply of monster");
+        require(saletoken.allowance(msg.sender, address(this)) >= monsterPrice, "This contract is not approved to spend your token" );
+        saletoken.approve(walletToRecieveToken, monsterPrice);
+        saletoken.transferFrom(msg.sender, walletToRecieveToken, monsterPrice);
+        
+        uint mintIndex = totalSupply();
             if (totalSupply() < MAX_monster) {
                 super._safeMint(msg.sender, mintIndex);
                 super._setTokenURI(mintIndex,message);
                 emit minted(msg.sender, mintIndex, message);
             }
-        }
+        
         // If we haven't set the starting index and this is either 1) the last saleable token or 2) the first token to be sold after
         // the end of pre-sale, set the starting index block
         if (startingIndexBlock == 0 && (totalSupply() == MAX_monster || block.timestamp >= REVEAL_TIMESTAMP)) {
